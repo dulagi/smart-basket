@@ -188,8 +188,12 @@ async def:pub optimizeBasket(grocery_text: str, selected_cards: list[str], prefe
         elif needle.startswith("1kg ") { needle = needle[4:]; }
         elif needle.startswith("1l ") { needle = needle[3:]; }
         elif needle.startswith("2l ") { quantity = 2.0; needle = needle[3:]; }
+        needle = needle.strip();
         matched: Grocery | None = None;
-        for item in [root -->][?:Grocery] { if item.name.lower().startswith(needle) or needle in item.name.lower() { matched = item; } }
+        for item in [root -->][?:Grocery] {
+            normalized_name = item.name.lower();
+            if normalized_name.startswith(needle + " (") or normalized_name == needle { matched = item; }
+        }
         if matched is not None { product = matched as Grocery; products = products + [BasketItem(name=product.name, quantity=quantity, category=product.category)]; }
     }
     if len(products) == 0 { return OptimizationResult(error="No matching catalog items. Open Browse store inventory to see all items."); }

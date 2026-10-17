@@ -9,6 +9,15 @@ import from "@hugeicons/react" { HugeiconsIcon }
 import from "@hugeicons/core-free-icons" { ShoppingBag01Icon, SparklesIcon, DeliveryTruck01Icon, CreditCardIcon, CheckmarkCircle02Icon }
 
 
+def format_rs(amount: float) -> str {
+    cents = int(round(amount * 100.0));
+    whole = cents // 100;
+    fraction = cents % 100;
+    fraction_text = "0" + str(fraction) if fraction < 10 else str(fraction);
+    return str(whole) + "." + fraction_text;
+}
+
+
 def:pub SmartBasket() -> JsxElement {
     has grocery_text: str = "2kg rice, 1L milk, eggs, tomatoes, bread";
     has basket_items: list[str] = ["2kg rice", "1L milk", "eggs", "tomatoes", "bread"];
@@ -53,21 +62,26 @@ def:pub SmartBasket() -> JsxElement {
         result = None;
         error_message = "";
     }
-    async def handle_optimize -> None {
+    async def handle_optimize {
         loading = True;
-        error_message = "";
-        try {
-            offer_banks = [card for card in selected_cards if card in cards];
-            for saved in saved_cards {
-                saved_label = saved.nickname + " · " + saved.brand + " ending " + saved.last_four;
-                if saved_label in selected_cards and not (saved.bank in offer_banks) { offer_banks = offer_banks + [saved.bank]; }
-            }
-            candidate = await optimizeBasket(grocery_text, offer_banks, selected_stores, speed_priority, delivery_days, delivery_hours);
-            if candidate.error != "" { error_message = candidate.error; result = None; }
-            else { result = candidate; }
-        } except Exception {
-            error_message = "We could not optimize this basket. Please try again.";
+        error_message = "Optimizing your basket...";
+        result = None;
+        next_error: str = "";
+        next_result: OptimizationResult | None = None;
+        offer_banks = [card for card in selected_cards if card in cards];
+        for saved in saved_cards {
+            saved_label = saved.nickname + " · " + saved.brand + " ending " + saved.last_four;
+            if saved_label in selected_cards and not (saved.bank in offer_banks) { offer_banks = offer_banks + [saved.bank]; }
         }
+        try {
+            candidate = await optimizeBasket(grocery_text, offer_banks, selected_stores, speed_priority, delivery_days, delivery_hours);
+            if candidate.error != "" { next_error = candidate.error; }
+            else { next_result = candidate; }
+        } except Exception as err {
+            next_error = str(err);
+        }
+        error_message = next_error;
+        result = next_result;
         loading = False;
     }
     def handle_example(e: MouseEvent) {
@@ -135,7 +149,7 @@ def:pub SmartBasket() -> JsxElement {
                             </div>
                             <div className="flex flex-col gap-3"><div className="flex items-center justify-between"><label className="text-sm font-medium text-slate-200">Supermarkets to compare</label><span className="text-xs text-slate-500">Select multiple or leave all selected</span></div><div className="grid gap-2 sm:grid-cols-3">{for store in stores { <label key={store} className={"flex cursor-pointer items-center gap-2 rounded-xl border px-3 py-2.5 text-xs transition-all hover:border-emerald-300/30 " + ("border-emerald-300/35 bg-emerald-300/[0.08] text-emerald-50" if store in selected_stores else "border-white/10 bg-slate-950/35 text-slate-400")}><input type="checkbox" value={store} checked={store in selected_stores} onChange={handle_store} className="size-4 accent-emerald-300" />{store}</label> }}</div></div>
                             <div className="grid gap-5 sm:grid-cols-2"><div className="flex flex-col gap-2"><div className="flex items-center justify-between"><label htmlFor="speed-priority" className="text-sm font-medium text-slate-200">Delivery priority</label><span className="rounded-full bg-cyan-300/10 px-2 py-1 text-xs tabular-nums text-cyan-200">{str(speed_priority)}% speed</span></div><input id="speed-priority" type="range" min="0" max="100" step="5" value={str(speed_priority)} onChange={handle_speed} className="sb-range mt-2 w-full cursor-pointer transition-all duration-200" /><div className="flex justify-between text-xs text-slate-500"><span>Lowest price</span><span>Fastest delivery</span></div></div><div className="grid grid-cols-2 gap-3"><div className="flex flex-col gap-2"><label htmlFor="delivery-days" className="text-sm font-medium text-slate-200">Delivery in days</label><input id="delivery-days" type="number" min="0" max="7" value={str(delivery_days)} onChange={handle_days} className="h-10 w-full rounded-xl border border-white/10 bg-slate-950/65 px-3 text-sm text-white outline-none focus:border-cyan-300/40" /></div><div className="flex flex-col gap-2"><label htmlFor="delivery-hours" className="text-sm font-medium text-slate-200">Extra hours</label><input id="delivery-hours" type="number" min="0" max="23" value={str(delivery_hours)} onChange={handle_hours} className="h-10 w-full rounded-xl border border-white/10 bg-slate-950/65 px-3 text-sm text-white outline-none focus:border-cyan-300/40" /></div></div></div>
-                            <button type="button" onClick={handle_optimize} disabled={loading} className="group inline-flex h-12 w-full items-center justify-center gap-2 rounded-xl bg-emerald-300 px-4 text-sm font-semibold text-slate-950 shadow-[0_0_28px_rgba(52,211,153,.18)] transition-all duration-300 hover:-translate-y-0.5 hover:bg-emerald-200 hover:shadow-[0_0_36px_rgba(52,211,153,.30)] disabled:pointer-events-none disabled:opacity-60">
+                            <button type="button" onClick={lambda (e: MouseEvent) { handle_optimize(); }} disabled={loading} className="group inline-flex h-12 w-full items-center justify-center gap-2 rounded-xl bg-emerald-300 px-4 text-sm font-semibold text-slate-950 shadow-[0_0_28px_rgba(52,211,153,.18)] transition-all duration-300 hover:-translate-y-0.5 hover:bg-emerald-200 hover:shadow-[0_0_36px_rgba(52,211,153,.30)] disabled:pointer-events-none disabled:opacity-60">
                                 {if loading { <span className="sb-radar"><span /></span> } else { <HugeiconsIcon icon={SparklesIcon} strokeWidth={2} className="size-4 transition-transform duration-300 group-hover:rotate-12" /> }}
                                 {"Agent negotiating local prices..." if loading else "Find my best basket"}
                             </button>
@@ -160,9 +174,9 @@ def:pub SmartBasket() -> JsxElement {
                                 </div>
                             } else {
                                 <div className="sb-receipt flex flex-col gap-5 rounded-2xl border border-white/10 bg-slate-950/45 p-4 sm:p-5">
-                                    <div className="flex flex-wrap items-end justify-between gap-3 border-b border-dashed border-white/15 pb-4"><div><p className="text-xs uppercase tracking-[0.16em] text-slate-500">Estimated total</p><p className="mt-1 text-3xl font-semibold tracking-tight tabular-nums text-white">Rs. {"{:.2f}".format(result.total)}</p></div><div className="rounded-xl border border-emerald-300/25 bg-emerald-300/10 px-3 py-2 text-right"><p className="text-[10px] font-semibold uppercase tracking-wider text-emerald-200">You saved</p><p className="text-lg font-semibold tabular-nums text-emerald-200">Rs. {"{:.2f}".format(result.savings)}</p></div></div>
+                                    <div className="flex flex-wrap items-end justify-between gap-3 border-b border-dashed border-white/15 pb-4"><div><p className="text-xs uppercase tracking-[0.16em] text-slate-500">Estimated total</p><p className="mt-1 text-3xl font-semibold tracking-tight tabular-nums text-white">Rs. {format_rs(result.total)}</p></div><div className="rounded-xl border border-emerald-300/25 bg-emerald-300/10 px-3 py-2 text-right"><p className="text-[10px] font-semibold uppercase tracking-wider text-emerald-200">You saved</p><p className="text-lg font-semibold tabular-nums text-emerald-200">Rs. {format_rs(result.savings)}</p></div></div>
                                     <div className="grid grid-cols-2 gap-3"><div className="rounded-xl border border-white/8 bg-white/[0.03] p-3"><p className="text-[10px] uppercase tracking-wider text-slate-500">Stores in this run</p><p className="mt-1 text-sm font-semibold text-white">{result.store}</p></div><div className="rounded-xl border border-white/8 bg-white/[0.03] p-3"><p className="text-[10px] uppercase tracking-wider text-slate-500">Payment</p><p className="mt-1 text-sm font-semibold text-white">{result.card}</p></div></div>
-                                    <div className="rounded-xl border border-white/8 bg-white/[0.025] p-4"><div className="mb-3 flex items-center justify-between"><p className="text-sm font-semibold text-white">Itemized receipt</p><Badge variant="outline" className="border-cyan-300/20 bg-cyan-300/5 text-cyan-200">{str(len(result.lines))} lines</Badge></div><div className="flex flex-col gap-2">{for (index, line) in enumerate(result.lines) { <div key={str(index)} className="flex flex-col gap-1 border-b border-white/5 pb-2"><div className="flex items-center justify-between gap-2"><span className="text-sm capitalize text-slate-200">{line.name} × {str(line.quantity)}</span><span className="text-sm tabular-nums text-white">Rs. {"{:.2f}".format(line.line_total)}</span></div><div className="flex flex-wrap justify-between gap-1 text-xs text-slate-500"><span>{line.store} · Rs. {"{:.2f}".format(line.base_price)}</span><span className="text-emerald-300">-{ "Rs. " + "{:.2f}".format(line.item_discount) } · {line.promo_note}</span></div></div> }}</div><div className="mt-3 flex flex-col gap-2 border-t border-dashed border-white/10 pt-3 text-sm"><div className="flex justify-between text-slate-400"><span>Shelf subtotal</span><span className="tabular-nums">Rs. {"{:.2f}".format(result.subtotal)}</span></div><div className="flex justify-between text-emerald-300"><span>Item discounts</span><span className="tabular-nums">- Rs. {"{:.2f}".format(result.item_discounts)}</span></div><div className="flex justify-between text-emerald-300"><span>Basket promotion</span><span className="tabular-nums">- Rs. {"{:.2f}".format(result.basket_discount)}</span></div><div className="mt-1 flex justify-between border-t border-white/5 pt-2 text-slate-300"><span>Delivery charges</span><span className="tabular-nums">Rs. {"{:.2f}".format(result.delivery_charge)}</span></div>{for delivery in result.deliveries { <div key={delivery.store} className="flex justify-between pl-3 text-xs text-slate-500"><span>{delivery.store} · {delivery.courier}</span><span className="tabular-nums">Rs. {"{:.2f}".format(delivery.charge)}</span></div> }}</div></div>
+                                    <div className="rounded-xl border border-white/8 bg-white/[0.025] p-4"><div className="mb-3 flex items-center justify-between"><p className="text-sm font-semibold text-white">Itemized receipt</p><Badge variant="outline" className="border-cyan-300/20 bg-cyan-300/5 text-cyan-200">{str(len(result.lines))} lines</Badge></div><div className="flex flex-col gap-2">{for (index, line) in enumerate(result.lines) { <div key={str(index)} className="flex flex-col gap-1 border-b border-white/5 pb-2"><div className="flex items-center justify-between gap-2"><span className="text-sm capitalize text-slate-200">{line.name} × {str(line.quantity)}</span><span className="text-sm tabular-nums text-white">Rs. {format_rs(line.line_total)}</span></div><div className="flex flex-wrap justify-between gap-1 text-xs text-slate-500"><span>{line.store} · Rs. {format_rs(line.base_price)}</span><span className="text-emerald-300">-{ format_rs(line.item_discount) } · {line.promo_note}</span></div></div> }}</div><div className="mt-3 flex flex-col gap-2 border-t border-dashed border-white/10 pt-3 text-sm"><div className="flex justify-between text-slate-400"><span>Shelf subtotal</span><span className="tabular-nums">Rs. {format_rs(result.subtotal)}</span></div><div className="flex justify-between text-emerald-300"><span>Item discounts</span><span className="tabular-nums">- Rs. {format_rs(result.item_discounts)}</span></div><div className="flex justify-between text-emerald-300"><span>Basket promotion</span><span className="tabular-nums">- Rs. {format_rs(result.basket_discount)}</span></div><div className="mt-1 flex justify-between border-t border-white/5 pt-2 text-slate-300"><span>Delivery charges</span><span className="tabular-nums">Rs. {format_rs(result.delivery_charge)}</span></div>{for delivery in result.deliveries { <div key={delivery.store} className="flex justify-between pl-3 text-xs text-slate-500"><span>{delivery.store} · {delivery.courier}</span><span className="tabular-nums">Rs. {format_rs(delivery.charge)}</span></div> }}</div></div>
                                     <div className="rounded-xl border border-white/8 bg-white/[0.025] p-4"><div className="mb-4 flex items-center justify-between"><p className="text-sm font-semibold text-white">Requested delivery</p><Badge variant="outline" className="border-cyan-300/20 bg-cyan-300/5 text-cyan-200">{str(result.delivery_days)}d {str(result.delivery_hours)}h</Badge></div><p className="text-sm font-semibold text-white">{result.delivery_date}</p>{for delivery in result.deliveries { <p key={delivery.store} className="mt-1 text-sm text-slate-400">{delivery.store} · {delivery.courier}</p> }}</div>
                                     <p className="border-t border-dashed border-white/10 pt-3 text-xs text-slate-500">Estimated discounts and delivery charges use simulated local data. Mock card records only; no payment is processed.</p>
                                 </div>
