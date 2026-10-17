@@ -84,7 +84,6 @@ def:pub initializeBasket() -> bool {
     sugar = root ++> Grocery(name="sugar", base_price=310.0, category="Pantry");
     chicken = root ++> Grocery(name="chicken", base_price=1250.0, category="Perishable");
     groceries: list[Grocery] = [rice, milk, eggs, bread, dhal, tomatoes, bananas, tea, sugar, chicken];
-
     keells = root ++> Supermarket(name="Keells");
     cargills = root ++> Supermarket(name="Cargills Food City");
     ar = root ++> Supermarket(name="Arpico Supercentre");
@@ -118,110 +117,90 @@ def:pub initializeBasket() -> bool {
     return True;
 }
 
-walker:pub optimizeBasket {
-    has grocery_text: str = "";
-    has selected_cards: list[str] = [];
-    has preferred_stores: list[str] = [];
-    has speed_priority: int = 50;
-
-    async can optimize with Root entry {
-        if len(self.grocery_text.strip()) == 0 {
-            report OptimizationResult(error="Add at least one grocery item to build your basket.");
-            disengage;
+async def:pub optimizeBasket(grocery_text: str, selected_cards: list[str], preferred_stores: list[str], speed_priority: int) -> OptimizationResult {
+    if len(grocery_text.strip()) == 0 { return OptimizationResult(error="Add at least one grocery item to build your basket."); }
+    _ = initializeBasket();
+    classified: ClassificationResult;
+    try {
+        classified = await classify_groceries(grocery_text);
+    } except Exception {
+        fallback: list[ItemClassification] = [];
+        for part in grocery_text.split(",") {
+            name = part.strip();
+            if len(name) > 0 { fallback = fallback + [ItemClassification(name=name, category="Pantry")]; }
         }
-        _ = initializeBasket();
-        classified: ClassificationResult;
-        try {
-            classified = await classify_groceries(self.grocery_text);
-        } except Exception {
-            parts = self.grocery_text.split(",");
-            fallback: list[ItemClassification] = [];
-            for part in parts {
-                name = part.strip();
-                if len(name) > 0 { fallback = fallback + [ItemClassification(name=name, category="Pantry")]; }
+        classified = ClassificationResult(items=fallback);
+    }
+    if len(classified.items) == 0 { return OptimizationResult(error="No grocery items were recognized. Try a comma-separated list."); }
+
+    best_total: float = 999999999.0;
+    best_store: str = "";
+    best_courier: str = "";
+    best_card: str = "Cash on delivery";
+    best_savings: float = 0.0;
+    best_days: int = 1;
+    best_note: str = "";
+    best_items: list[BasketItem] = [];
+
+    for shop in [root -->][?:Supermarket] {
+        if len(preferred_stores) > 0 and not (shop.name in preferred_stores) { continue; }
+        subtotal: float = 0.0;
+        original: float = 0.0;
+        selected_items: list[BasketItem] = [];
+        for classification in classified.items {
+            typed_name = classification.name.lower().strip();
+            quantity: float = 1.0;
+            if typed_name.startswith("2kg ") { quantity = 2.0; typed_name = typed_name[4:]; }
+            elif typed_name.startswith("1kg ") { typed_name = typed_name[4:]; }
+            elif typed_name.startswith("1l ") { typed_name = typed_name[3:]; }
+            elif typed_name.startswith("1l") { typed_name = typed_name[2:]; }
+            elif typed_name.startswith("2l ") { quantity = 2.0; typed_name = typed_name[3:]; }
+            matched: Grocery | None = None;
+            for product in [root -->][?:Grocery] {
+                if product.name in typed_name or typed_name in product.name { matched = product; }
             }
-            classified = ClassificationResult(items=fallback);
-        }
-        if len(classified.items) == 0 {
-            report OptimizationResult(error="No grocery items were recognized. Try a comma-separated list.");
-            disengage;
-        }
-
-        best_total: float = 999999999.0;
-        best_store: str = "";
-        best_courier: str = "";
-        best_card: str = "Cash on delivery";
-        best_savings: float = 0.0;
-        best_days: int = 1;
-        best_note: str = "";
-        best_items: list[BasketItem] = [];
-        for shop in [root -->][?:Supermarket] {
-            if len(self.preferred_stores) > 0 and not (shop.name in self.preferred_stores) { continue; }
-            subtotal: float = 0.0;
-            original: float = 0.0;
-            selected_items: list[BasketItem] = [];
-            for classification in classified.items {
-                typed_name = classification.name.lower();
-                quantity: float = 1.0;
-                if typed_name.startswith("2kg ") { quantity = 2.0; typed_name = typed_name[4:]; }
-                elif typed_name.startswith("1kg ") { typed_name = typed_name[4:]; }
-                elif typed_name.startswith("1l ") { typed_name = typed_name[3:]; }
-                elif typed_name.startswith("1l") { typed_name = typed_name[2:]; }
-                elif typed_name.startswith("2l ") { quantity = 2.0; typed_name = typed_name[3:]; }
-                matched: Grocery | None = None;
-                for product in [root -->][?:Grocery] {
-                    if product.name in typed_name or typed_name in product.name { matched = product; }
-                }
-                if matched is not None {
+            if matched is not None {
                 found = matched as Grocery;
                 item_price: float = found.base_price;
-                for inventory in [edge shop ->:HasOffer:->][?:InventoryOffer] {
+                for inventory in [shop ->:HasOffer:->][?:InventoryOffer] {
                     if inventory.item_name == found.name { item_price = inventory.price; }
                 }
                 original += found.base_price * quantity;
                 subtotal += item_price * quantity;
                 selected_items = selected_items + [BasketItem(name=found.name, quantity=quantity, category=classification.category)];
-                }
             }
-            for courier in [shop ->:HasCourier:->][?:DeliveryCourier] {
-                for promotion in [shop ->:HasPromotion:->][?:CardPromotion] {
-                    eligible_card = promotion.bank in self.selected_cards;
-                    if promotion.bank == "Commercial Bank" and promotion.category == "Perishable" {
-                        _ = 0;
-                    }
-                    discount_total: float = 0.0;
-                    if eligible_card {
-                        for selected in selected_items {
-                            if promotion.category == "All" or promotion.category == selected.category {
-                                for inventory in [edge shop ->:HasOffer:->][?:InventoryOffer] {
-                                    if inventory.item_name == selected.name {
-                                        discount_total += inventory.price * selected.quantity * promotion.discount;
-                                    }
-                                }
+        }
+        if len(selected_items) == 0 { continue; }
+        for courier in [shop ->:HasCourier:->][?:DeliveryCourier] {
+            for promotion in [shop ->:HasPromotion:->][?:CardPromotion] {
+                eligible_card = promotion.bank in selected_cards;
+                discount_total: float = 0.0;
+                if eligible_card {
+                    for selected in selected_items {
+                        if promotion.category == "All" or promotion.category == selected.category {
+                            for inventory in [shop ->:HasOffer:->][?:InventoryOffer] {
+                                if inventory.item_name == selected.name { discount_total += inventory.price * selected.quantity * promotion.discount; }
                             }
                         }
                     }
-                    final_total = subtotal - discount_total + courier.cost;
-                    speed_cost = (1.0 - (self.speed_priority as float) / 100.0) * (courier.days as float) * 80.0;
-                    adjusted_total = final_total + speed_cost;
-                    if adjusted_total < best_total {
-                        best_total = adjusted_total;
-                        best_store = shop.name;
-                        best_courier = courier.name;
-                        best_card = promotion.bank if eligible_card and discount_total > 0.0 else "Cash on delivery";
-                        best_savings = original + 520.0 - final_total;
-                        best_days = courier.days;
-                        best_note = promotion.description if eligible_card and discount_total > 0.0 else "No eligible bank offer applied";
-                        best_items = selected_items;
-                    }
+                }
+                final_total = subtotal - discount_total + courier.cost;
+                speed_cost = (1.0 - (speed_priority as float) / 100.0) * (courier.days as float) * 80.0;
+                adjusted_total = final_total + speed_cost;
+                if adjusted_total < best_total {
+                    best_total = adjusted_total;
+                    best_store = shop.name;
+                    best_courier = courier.name;
+                    best_card = promotion.bank if eligible_card and discount_total > 0.0 else "Cash on delivery";
+                    best_savings = original + 520.0 - final_total;
+                    best_days = courier.days;
+                    best_note = promotion.description if eligible_card and discount_total > 0.0 else "No eligible bank offer applied";
+                    best_items = selected_items;
                 }
             }
         }
-        if best_store == "" {
-            report OptimizationResult(error="No matching store was found. Adjust your preferred store selection.");
-            disengage;
-        }
-        eta = (datetime.now() + timedelta(days=best_days)).strftime("%A, %d %B");
-        report OptimizationResult(items=best_items, store=best_store, courier=best_courier, card=best_card, total=best_total, savings=best_savings, delivery_days=best_days, delivery_date=eta, promo_note=best_note);
     }
+    if best_store == "" { return OptimizationResult(error="No matching grocery items were found in the mock inventory. Try rice, milk, eggs, bread, dhal, tomatoes, bananas, tea, sugar, or chicken."); }
+    eta = (datetime.now() + timedelta(days=best_days)).strftime("%A, %d %B");
+    return OptimizationResult(items=best_items, store=best_store, courier=best_courier, card=best_card, total=best_total, savings=best_savings, delivery_days=best_days, delivery_date=eta, promo_note=best_note);
 }

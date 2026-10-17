@@ -39,12 +39,9 @@ def:pub SmartBasket() -> JsxElement {
         store_choices: list[str] = [];
         if selected_store != "All stores" { store_choices = [selected_store]; }
         try {
-            response = root spawn optimizeBasket(grocery_text=grocery_text, selected_cards=selected_cards, preferred_stores=store_choices, speed_priority=speed_priority);
-            if len(response.reports) > 0 {
-                candidate = response.reports[0] as OptimizationResult;
-                if candidate.error != "" { error_message = candidate.error; result = None; }
-                else { result = candidate; }
-            } else { error_message = "The basket planner returned no itinerary. Please try again."; }
+            candidate = await optimizeBasket(grocery_text, selected_cards, store_choices, speed_priority);
+            if candidate.error != "" { error_message = candidate.error; result = None; }
+            else { result = candidate; }
         } except Exception {
             error_message = "We could not optimize this basket. Please try again.";
         }
@@ -116,7 +113,7 @@ def:pub SmartBasket() -> JsxElement {
                                 <div className="flex flex-col gap-2"><label htmlFor="store-choice" className="text-sm font-medium">Preferred supermarket</label><select id="store-choice" value={selected_store} onChange={handle_store} className="h-10 rounded-lg border border-input bg-background px-3 text-sm shadow-xs outline-none focus-visible:ring-2 focus-visible:ring-ring"><option>All stores</option>{for store in stores { <option key={store}>{store}</option> }}</select></div>
                                 <div className="flex flex-col gap-2"><div className="flex items-center justify-between"><label htmlFor="speed-priority" className="text-sm font-medium">Delivery priority</label><span className="text-xs tabular-nums text-muted-foreground">{str(speed_priority)}% speed</span></div><input id="speed-priority" type="range" min="0" max="100" step="5" value={str(speed_priority)} onChange={handle_speed} className="mt-2 w-full accent-primary" /><div className="flex justify-between text-xs text-muted-foreground"><span>Save more</span><span>Arrive sooner</span></div></div>
                             </div>
-                            <Button onClick={handle_optimize} disabled={loading} className="h-11 w-full shadow-sm"><HugeiconsIcon icon={SparklesIcon} strokeWidth={2} className="size-4" />{ "Find my best basket" if not loading else "Comparing stores and offers..." }</Button>
+                            <button type="button" onClick={handle_optimize} disabled={loading} className="inline-flex h-11 w-full items-center justify-center gap-2 rounded-lg bg-primary px-4 text-sm font-medium text-primary-foreground shadow-sm transition-colors hover:bg-primary/90 disabled:pointer-events-none disabled:opacity-50"><HugeiconsIcon icon={SparklesIcon} strokeWidth={2} className="size-4" />{ "Find my best basket" if not loading else "Comparing stores and offers..." }</button>
                             {if error_message != "" { <p role="alert" className="text-sm text-destructive">{error_message}</p> }}
                         </CardContent>
                     </Card>
