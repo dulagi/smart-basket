@@ -1,7 +1,7 @@
 @import "tailwindcss";
 @import "tw-animate-css";
 @import "shadcn/tailwind.css";
-@import "@fontsource-variable/inter";
+@import "@fontsource-variable/geist";
 
 @custom-variant dark (&:is(.dark *));
 
@@ -30,7 +30,7 @@
     --chart-3: oklch(0.72 0.16 225);
     --chart-4: oklch(0.70 0.16 145);
     --chart-5: oklch(0.76 0.15 280);
-    --radius: 0.875rem;
+    --radius: 0.6rem;
     --sidebar: oklch(0.16 0.03 252);
     --sidebar-foreground: oklch(0.95 0.01 250);
     --sidebar-primary: oklch(0.86 0.17 163);
@@ -66,7 +66,7 @@
     --chart-3: oklch(0.72 0.16 225);
     --chart-4: oklch(0.70 0.16 145);
     --chart-5: oklch(0.76 0.15 280);
-    --radius: 0.875rem;
+    --radius: 0.6rem;
     --sidebar: oklch(0.16 0.03 252);
     --sidebar-foreground: oklch(0.95 0.01 250);
     --sidebar-primary: oklch(0.86 0.17 163);
@@ -78,7 +78,7 @@
 }
 
 @theme inline {
-    --font-sans: 'Inter Variable', sans-serif;
+    --font-sans: 'Geist Variable', sans-serif;
     --color-sidebar-ring: var(--sidebar-ring);
     --color-sidebar-border: var(--sidebar-border);
     --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
@@ -125,23 +125,16 @@
     html { @apply font-sans; }
 }
 
-.sb-app {
-    background: radial-gradient(ellipse at 8% 0%, rgba(16, 185, 129, 0.10), transparent 32%), radial-gradient(ellipse at 96% 12%, rgba(34, 211, 238, 0.10), transparent 34%), #080d17;
-}
-
+.sb-app { background: radial-gradient(ellipse at 8% 0%, rgba(16, 185, 129, 0.10), transparent 32%), radial-gradient(ellipse at 96% 12%, rgba(34, 211, 238, 0.10), transparent 34%), #080d17; }
 .sb-glass { backdrop-filter: blur(18px); -webkit-backdrop-filter: blur(18px); }
-
 .sb-range { appearance: none; height: 7px; border-radius: 999px; background: linear-gradient(90deg, #34d399, #22d3ee); outline: none; }
 .sb-range::-webkit-slider-thumb { appearance: none; width: 19px; height: 19px; border-radius: 50%; background: #a7f3d0; border: 3px solid #07111c; box-shadow: 0 0 0 2px rgba(52,211,153,.75), 0 0 18px rgba(52,211,153,.38); transition: transform .2s ease, box-shadow .2s ease; }
 .sb-range::-moz-range-thumb { width: 15px; height: 15px; border-radius: 50%; background: #a7f3d0; border: 3px solid #07111c; box-shadow: 0 0 0 2px rgba(52,211,153,.75), 0 0 18px rgba(52,211,153,.38); transition: transform .2s ease, box-shadow .2s ease; }
-.sb-range:hover::-webkit-slider-thumb { transform: scale(1.18); box-shadow: 0 0 0 3px rgba(52,211,153,.45), 0 0 24px rgba(52,211,153,.48); }
-.sb-range:hover::-moz-range-thumb { transform: scale(1.18); box-shadow: 0 0 0 3px rgba(52,211,153,.45), 0 0 24px rgba(52,211,153,.48); }
-
+.sb-range:hover::-webkit-slider-thumb, .sb-range:hover::-moz-range-thumb { transform: scale(1.18); }
 .sb-radar { position: relative; display: inline-flex; width: 22px; height: 22px; align-items: center; justify-content: center; border: 1px solid rgba(16,185,129,.75); border-radius: 999px; background: rgba(16,185,129,.16); box-shadow: 0 0 18px rgba(16,185,129,.25); }
 .sb-radar::before, .sb-radar::after, .sb-radar span { content: ""; position: absolute; inset: -3px; border: 1px solid rgba(52,211,153,.65); border-radius: 999px; animation: sb-pulse 1.8s ease-out infinite; }
 .sb-radar::after { animation-delay: .6s; }
 .sb-radar span { animation-delay: 1.2s; }
 .sb-radar-lg { width: 40px; height: 40px; }
 @keyframes sb-pulse { 0% { transform: scale(.65); opacity: .9; } 100% { transform: scale(2.1); opacity: 0; } }
-
 .sb-receipt { background-image: linear-gradient(rgba(255,255,255,.012) 1px, transparent 1px); background-size: 100% 28px; }
