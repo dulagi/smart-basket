@@ -172,17 +172,9 @@ def:pub listStoreInventory(store_name: str) -> list[InventoryRow] {
 async def:pub optimizeBasket(grocery_text: str, selected_cards: list[str], preferred_stores: list[str], speed_priority: int, delivery_days: int, delivery_hours: int) -> OptimizationResult {
     if len(grocery_text.strip()) == 0 { return OptimizationResult(error="Add at least one grocery item to build your basket."); }
     _ = initializeBasket();
-    classified: ClassificationResult;
-    try { classified = await classify_groceries(grocery_text); }
-    except Exception {
-        fallback: list[ItemClassification] = [];
-        for part in grocery_text.split(",") { name = part.strip(); if len(name) > 0 { fallback = fallback + [ItemClassification(name=name, category="Pantry")]; } }
-        classified = ClassificationResult(items=fallback);
-    }
-    if len(classified.items) == 0 { return OptimizationResult(error="No grocery items were recognized."); }
     products: list[BasketItem] = [];
-    for classification in classified.items {
-        needle = classification.name.lower().strip();
+    for entry in grocery_text.split(",") {
+        needle = entry.lower().strip();
         quantity: float = 1.0;
         if needle.startswith("2kg ") { quantity = 2.0; needle = needle[4:]; }
         elif needle.startswith("1kg ") { needle = needle[4:]; }
