@@ -25,8 +25,10 @@ def:pub AccountSignup() -> JsxElement {
         login_ok: bool = False;
         profile_message: str = "";
         if len(username.strip()) == 0 { message = "Choose a username for your account."; busy = False; return; }
+        if len(password) < 8 { message = "Use a password with at least 8 characters."; busy = False; return; }
+        if len(email.strip()) == 0 or "@" not in email { message = "Enter a valid email address."; busy = False; return; }
         try {
-            signup_result = await jacSignup(email, password, {"profile": {"firstname": username.strip()}});
+            signup_result = await jacSignup(email.strip(), password, {"firstname": username.strip()});
             if not signup_result["success"] { message = str(signup_result["error"] or "Could not create account. Check your details."); }
             else {
                 login_ok = await jacLogin(email, password);
@@ -47,7 +49,7 @@ def:pub AccountSignup() -> JsxElement {
         </section>
         <section className="flex items-center justify-center p-5 sm:p-8"><div className="w-full max-w-md">
             <div className="mb-8 flex items-center gap-3 lg:hidden"><div className="flex size-10 items-center justify-center rounded-xl bg-emerald-300 text-slate-950"><HugeiconsIcon icon={ShoppingBag01Icon} strokeWidth={2} className="size-5" /></div><span className="font-semibold text-white">Smart Basket</span></div>
-            <div className="mb-6"><h2 className="text-2xl font-semibold text-white">Create account</h2><p className="mt-2 text-sm text-slate-400">Register your own standard user account. Admin accounts are provisioned separately by operators.</p></div>
+            <div className="mb-6"><h2 className="text-2xl font-semibold text-white">Create account</h2><p className="mt-2 text-sm text-slate-400">Create a standard account. Use a valid email and password with at least 8 characters. Admin accounts are provisioned separately by operators.</p></div>
             <Card className="sb-glass border-white/10 bg-slate-900/70 shadow-2xl"><CardHeader><CardTitle className="text-white">Account details</CardTitle><CardDescription className="text-slate-400">Choose a username, email, and unique password.</CardDescription></CardHeader><CardContent className="flex flex-col gap-4">
                 <label className="flex flex-col gap-2 text-sm text-slate-200">Username<input value={username} onChange={handle_username} autoComplete="nickname" placeholder="How we should greet you" className="h-11 rounded-xl border border-white/10 bg-slate-950/70 px-3 text-white outline-none focus:border-emerald-300/40" /></label>
                 <label className="flex flex-col gap-2 text-sm text-slate-200">Email<input type="email" value={email} onChange={handle_email} autoComplete="email" placeholder="you@example.com" className="h-11 rounded-xl border border-white/10 bg-slate-950/70 px-3 text-white outline-none focus:border-emerald-300/40" /></label>
