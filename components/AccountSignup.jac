@@ -1,4 +1,5 @@
 import from "@jac/runtime" { jacSignup, jacLogin, useNavigate, Link }
+sv import from ..services.userProfile { saveDisplayName }
 import from .ui.button { Button }
 import from .ui.card { Card, CardContent, CardDescription, CardHeader, CardTitle }
 import from "@hugeicons/react" { HugeiconsIcon }
@@ -6,12 +7,14 @@ import from "@hugeicons/core-free-icons" { ShoppingBag01Icon }
 
 
 def:pub AccountSignup() -> JsxElement {
+    has username: str = "";
     has email: str = "";
     has password: str = "";
     has busy: bool = False;
     has message: str = "";
     has success_message: str = "";
     nav = useNavigate();
+    def handle_username(e: ChangeEvent) { username = e.target.value; }
     def handle_email(e: ChangeEvent) { email = e.target.value; }
     def handle_password(e: ChangeEvent) { password = e.target.value; }
     async def handle_submit -> None {
@@ -20,13 +23,18 @@ def:pub AccountSignup() -> JsxElement {
         success_message = "";
         signup_result: dict | None = None;
         login_ok: bool = False;
+        profile_message: str = "";
+        if len(username.strip()) == 0 { message = "Choose a username for your account."; busy = False; return; }
         try {
-            signup_result = await jacSignup(email, password);
+            signup_result = await jacSignup(email, password, {"profile": {"firstname": username.strip()}});
             if not signup_result["success"] { message = str(signup_result["error"] or "Could not create account. Check your details."); }
             else {
                 login_ok = await jacLogin(email, password);
-                if login_ok { nav("/account/cards"); }
-                else { success_message = "Account created. Please sign in to continue."; }
+                if login_ok {
+                    profile_message = await saveDisplayName(username.strip());
+                    if profile_message == "" { nav("/account/cards"); }
+                    else { message = profile_message; }
+                } else { success_message = "Account created. Please sign in to continue."; }
             }
         } except Exception { message = "Could not create the account. Use a valid email and a stronger password."; }
         busy = False;
@@ -40,7 +48,8 @@ def:pub AccountSignup() -> JsxElement {
         <section className="flex items-center justify-center p-5 sm:p-8"><div className="w-full max-w-md">
             <div className="mb-8 flex items-center gap-3 lg:hidden"><div className="flex size-10 items-center justify-center rounded-xl bg-emerald-300 text-slate-950"><HugeiconsIcon icon={ShoppingBag01Icon} strokeWidth={2} className="size-5" /></div><span className="font-semibold text-white">Smart Basket</span></div>
             <div className="mb-6"><h2 className="text-2xl font-semibold text-white">Create account</h2><p className="mt-2 text-sm text-slate-400">Register your own standard user account. Admin accounts are provisioned separately by operators.</p></div>
-            <Card className="sb-glass border-white/10 bg-slate-900/70 shadow-2xl"><CardHeader><CardTitle className="text-white">Account details</CardTitle><CardDescription className="text-slate-400">Use an email and a unique password.</CardDescription></CardHeader><CardContent className="flex flex-col gap-4">
+            <Card className="sb-glass border-white/10 bg-slate-900/70 shadow-2xl"><CardHeader><CardTitle className="text-white">Account details</CardTitle><CardDescription className="text-slate-400">Choose a username, email, and unique password.</CardDescription></CardHeader><CardContent className="flex flex-col gap-4">
+                <label className="flex flex-col gap-2 text-sm text-slate-200">Username<input value={username} onChange={handle_username} autoComplete="nickname" placeholder="How we should greet you" className="h-11 rounded-xl border border-white/10 bg-slate-950/70 px-3 text-white outline-none focus:border-emerald-300/40" /></label>
                 <label className="flex flex-col gap-2 text-sm text-slate-200">Email<input type="email" value={email} onChange={handle_email} autoComplete="email" placeholder="you@example.com" className="h-11 rounded-xl border border-white/10 bg-slate-950/70 px-3 text-white outline-none focus:border-emerald-300/40" /></label>
                 <label className="flex flex-col gap-2 text-sm text-slate-200">Password<input type="password" value={password} onChange={handle_password} autoComplete="new-password" className="h-11 rounded-xl border border-white/10 bg-slate-950/70 px-3 text-white outline-none focus:border-emerald-300/40" /></label>
                 {if message != "" { <p role="alert" className="text-sm text-rose-200">{message}</p> }}

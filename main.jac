@@ -1,6 +1,7 @@
 import from services.basketService { BasketItem, BillLine, StoreDelivery, OptimizationResult, ItemClassification, initializeBasket, classify_groceries, optimizeBasket }
 import from services.paymentCards { SavedPaymentCard, listSavedCards, addSavedCard }
 import from services.basketService { optimizeBasket }
+import from services.userProfile { BasketProfile, saveDisplayName, getDisplayName }
 
 import ".styles.global.css";
 import from "@jac/runtime" { Router, Routes, Route }

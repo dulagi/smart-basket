@@ -1,5 +1,6 @@
 sv import from ..services.basketService { OptimizationResult, optimizeBasket }
 sv import from ..services.paymentCards { SavedPaymentCard, listSavedCards }
+sv import from ..services.userProfile { getDisplayName }
 import from "@jac/runtime" { Link, useNavigate, jacIsLoggedIn }
 import from .ui.button { Button }
 import from .ui.card { Card, CardContent, CardDescription, CardHeader, CardTitle }
@@ -16,6 +17,7 @@ def:pub SmartBasket() -> JsxElement {
     has error_message: str = "";
     has cards: list[str] = ["Commercial Bank", "HNB", "Sampath Bank", "Cash on delivery"];
     has saved_cards: list[SavedPaymentCard] = [];
+    has display_name: str = "";
     has selected_cards: list[str] = ["Commercial Bank", "HNB", "Cash on delivery"];
     has stores: list[str] = ["Keells", "Cargills Food City", "Arpico Supercentre"];
     has selected_stores: list[str] = ["Keells", "Cargills Food City", "Arpico Supercentre"];
@@ -25,8 +27,10 @@ def:pub SmartBasket() -> JsxElement {
 
     async can with entry {
         if jacIsLoggedIn() {
-            try { saved_cards = await listSavedCards(); }
-            except Exception { saved_cards = []; }
+            try {
+                saved_cards = await listSavedCards();
+                display_name = await getDisplayName();
+            } except Exception { saved_cards = []; }
         }
     }
     def handle_text(e: ChangeEvent) { grocery_text = e.target.value; }
@@ -88,7 +92,7 @@ def:pub SmartBasket() -> JsxElement {
                 <div className="pointer-events-none absolute -right-14 -top-24 size-72 rounded-full bg-cyan-400/10 blur-3xl" />
                 <div className="relative flex flex-wrap items-end justify-between gap-6">
                     <div className="flex max-w-3xl flex-col gap-3">
-                        <p className="flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.22em] text-emerald-300"><HugeiconsIcon icon={SparklesIcon} strokeWidth={2} className="size-4" /> Smarter shopping starts here</p>
+                        <p className="flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.22em] text-emerald-300"><HugeiconsIcon icon={SparklesIcon} strokeWidth={2} className="size-4" />{"Welcome back, " + display_name if len(display_name) > 0 else "Smarter shopping starts here"}</p>
                         <h1 className="text-balance text-3xl font-semibold leading-tight tracking-tight text-white sm:text-5xl">A better basket, <span className="text-emerald-300">by design.</span></h1>
                         <p className="max-w-2xl text-sm leading-relaxed text-slate-400 sm:text-base">Compare simulated supermarket prices, card promotions, and delivery fees. Your agent finds the lowest net cost.</p>
                     </div>
