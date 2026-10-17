@@ -1,5 +1,8 @@
-import from .frontend { app as ClientApp }
+import from services.basketService { BasketItem, OptimizationResult, initializeBasket, optimizeBasket }
+import ".styles.global.css";
+import from .components.SmartBasket { SmartBasket }
+
 
 def:pub app() -> JsxElement {
-    return <ClientApp />;
+    return <SmartBasket />;
 }
