@@ -40,7 +40,7 @@ def:pub AccountLogin() -> JsxElement {
                 <label className="flex flex-col gap-2 text-sm text-slate-200">Password<input type="password" value={password} onChange={handle_password} autoComplete="current-password" className="h-11 rounded-xl border border-white/10 bg-slate-950/70 px-3 text-white outline-none focus:border-emerald-300/40" /></label>
                 {if message != "" { <p role="alert" className="text-sm text-rose-200">{message}</p> }}
                 <Button disabled={busy} onClick={handle_submit} className="h-11 bg-emerald-300 font-semibold text-slate-950 hover:bg-emerald-200">{"Signing in..." if busy else "Sign in"}</Button>
-                <p className="text-xs leading-relaxed text-slate-500">Create an account using the JacHammer platform registration flow first.</p>
+                <p className="text-center text-sm text-slate-400">New to Smart Basket? <Link to="/signup" className="font-medium text-cyan-200 hover:text-white">Create account</Link></p>
             </CardContent></Card>
         </div></section>
     </div>;

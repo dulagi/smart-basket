@@ -53,7 +53,12 @@ def:pub SmartBasket() -> JsxElement {
         loading = True;
         error_message = "";
         try {
-            candidate = await optimizeBasket(grocery_text, selected_cards, selected_stores, speed_priority, delivery_days, delivery_hours);
+            offer_banks = [card for card in selected_cards if card in cards];
+            for saved in saved_cards {
+                saved_label = saved.nickname + " · " + saved.brand + " ending " + saved.last_four;
+                if saved_label in selected_cards and not (saved.bank in offer_banks) { offer_banks = offer_banks + [saved.bank]; }
+            }
+            candidate = await optimizeBasket(grocery_text, offer_banks, selected_stores, speed_priority, delivery_days, delivery_hours);
             if candidate.error != "" { error_message = candidate.error; result = None; }
             else { result = candidate; }
         } except Exception {
@@ -120,6 +125,7 @@ def:pub SmartBasket() -> JsxElement {
                                     saved_label = saved.nickname + " · " + saved.brand + " ending " + saved.last_four;
                                     <label key={saved.brand + saved.last_four + saved.nickname} className={"group flex cursor-pointer items-center gap-3 rounded-xl border px-3 py-3 text-sm transition-all duration-200 hover:-translate-y-0.5 hover:border-emerald-300/30 hover:bg-emerald-300/5 " + ("border-emerald-300/35 bg-emerald-300/[0.08] text-emerald-50" if saved_label in selected_cards else "border-white/10 bg-slate-950/35 text-slate-300")}><input type="checkbox" value={saved_label} checked={saved_label in selected_cards} onChange={handle_cards} className="size-4 accent-emerald-300" /><span>{saved_label}</span></label>
                                 }}
+                                <div className="rounded-lg border border-cyan-300/10 bg-cyan-300/[0.04] px-3 py-2 text-xs leading-relaxed text-slate-400">Mock offers: Commercial Bank, 20% off perishables · HNB, 15% off pantry · Sampath Bank, 10% off basket. Select a matching bank/card to apply eligible offers.</div>
                                 {if not jacIsLoggedIn() { <Link to="/login" className="text-xs text-cyan-200 hover:text-white">Sign in to load account cards</Link> }}
                             </div>
                             </div>

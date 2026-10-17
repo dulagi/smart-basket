@@ -10,6 +10,7 @@ def:pub SavedCards() -> JsxElement {
     has saved_cards: list[SavedPaymentCard] = [];
     has nickname: str = "";
     has brand: str = "Visa";
+    has bank: str = "Commercial Bank";
     has last_four: str = "";
     has busy: bool = True;
     has error_message: str = "";
@@ -24,6 +25,7 @@ def:pub SavedCards() -> JsxElement {
     }
     def handle_nickname(e: ChangeEvent) { nickname = e.target.value; }
     def handle_brand(e: ChangeEvent) { brand = e.target.value; }
+    def handle_bank(e: ChangeEvent) { bank = e.target.value; }
     def handle_last_four(e: ChangeEvent) { last_four = e.target.value; }
     async def handle_add -> None {
         error_message = "";
@@ -31,7 +33,7 @@ def:pub SavedCards() -> JsxElement {
         if len(last_four) != 4 { error_message = "Enter exactly the last four digits."; return; }
         busy = True;
         try {
-            card = await addSavedCard(nickname, brand, last_four);
+            card = await addSavedCard(nickname, brand, bank, last_four);
             if card is None { error_message = "That card entry could not be saved. Check the nickname, brand, and last four digits."; }
             else { saved_cards = saved_cards + [card]; nickname = ""; last_four = ""; success_message = "Masked card saved to your account."; }
         } except Exception { error_message = "Could not save the card. Sign in and try again."; }
@@ -47,11 +49,12 @@ def:pub SavedCards() -> JsxElement {
                 <Card className="sb-glass border-white/10 bg-slate-900/70 shadow-xl lg:col-span-3"><CardHeader><CardTitle className="text-white">Your cards</CardTitle><CardDescription className="text-slate-400">Only masked card references are kept in your account.</CardDescription></CardHeader><CardContent className="flex flex-col gap-3">
                     {if busy { <p className="py-8 text-center text-sm text-slate-400">Loading saved cards...</p> }
                     elif len(saved_cards) == 0 { <div className="rounded-xl border border-dashed border-white/10 bg-slate-950/40 px-4 py-10 text-center"><div className="mx-auto flex size-11 items-center justify-center rounded-xl bg-cyan-300/10 text-cyan-200"><HugeiconsIcon icon={CreditCardIcon} strokeWidth={2} className="size-5" /></div><p className="mt-3 font-medium text-white">No saved cards yet</p><p className="mt-1 text-sm text-slate-400">Add a masked card reference to use in the basket selector.</p></div> }
-                    else { for card in saved_cards { <div key={card.brand + card.last_four + card.nickname} className="flex items-center gap-3 rounded-xl border border-white/10 bg-slate-950/40 p-4"><div className="flex size-10 items-center justify-center rounded-lg bg-cyan-300/10 text-cyan-200"><HugeiconsIcon icon={CreditCardIcon} strokeWidth={2} className="size-5" /></div><div className="min-w-0"><p className="font-medium text-white">{card.nickname}</p><p className="text-sm text-slate-400">{card.brand} ending in {card.last_four}</p></div><span className="ml-auto rounded-full border border-emerald-300/20 bg-emerald-300/5 px-2 py-1 text-[10px] uppercase tracking-wider text-emerald-200">Masked</span></div> } }}
+                    else { for card in saved_cards { <div key={card.brand + card.last_four + card.nickname} className="flex items-center gap-3 rounded-xl border border-white/10 bg-slate-950/40 p-4"><div className="flex size-10 items-center justify-center rounded-lg bg-cyan-300/10 text-cyan-200"><HugeiconsIcon icon={CreditCardIcon} strokeWidth={2} className="size-5" /></div><div className="min-w-0"><p className="font-medium text-white">{card.nickname}</p><p className="text-sm text-slate-400">{card.brand} · {card.bank} · ending in {card.last_four}</p></div><span className="ml-auto rounded-full border border-emerald-300/20 bg-emerald-300/5 px-2 py-1 text-[10px] uppercase tracking-wider text-emerald-200">Masked</span></div> } }}
                 </CardContent></Card>
                 <Card className="sb-glass border-white/10 bg-slate-900/70 shadow-xl lg:col-span-2"><CardHeader><CardTitle className="text-white">Add a card reference</CardTitle><CardDescription className="text-slate-400">Never enter a full card number or CVV here.</CardDescription></CardHeader><CardContent className="flex flex-col gap-4">
                     <label className="flex flex-col gap-2 text-sm text-slate-200">Nickname<input value={nickname} onChange={handle_nickname} maxLength={32} placeholder="Everyday card" className="h-10 rounded-lg border border-white/10 bg-slate-950/70 px-3 text-white outline-none focus:border-emerald-300/40" /></label>
                     <label className="flex flex-col gap-2 text-sm text-slate-200">Card brand<select value={brand} onChange={handle_brand} className="h-10 rounded-lg border border-white/10 bg-slate-950/70 px-3 text-white outline-none focus:border-emerald-300/40"><option>Visa</option><option>Mastercard</option><option>American Express</option></select></label>
+                    <label className="flex flex-col gap-2 text-sm text-slate-200">Issuing bank<select value={bank} onChange={handle_bank} className="h-10 rounded-lg border border-white/10 bg-slate-950/70 px-3 text-white outline-none focus:border-emerald-300/40"><option>Commercial Bank</option><option>HNB</option><option>Sampath Bank</option></select></label>
                     <label className="flex flex-col gap-2 text-sm text-slate-200">Last four digits<input inputMode="numeric" value={last_four} onChange={handle_last_four} maxLength={4} placeholder="1234" className="h-10 rounded-lg border border-white/10 bg-slate-950/70 px-3 text-white outline-none focus:border-emerald-300/40" /></label>
                     {if error_message != "" { <p role="alert" className="text-sm text-rose-200">{error_message}</p> }}
                     {if success_message != "" { <p role="status" className="text-sm text-emerald-200">{success_message}</p> }}

@@ -6,6 +6,7 @@ import ".styles.global.css";
 import from "@jac/runtime" { Router, Routes, Route }
 import from .components.SmartBasket { SmartBasket }
 import from .components.AccountLogin { AccountLogin }
+import from .components.AccountSignup { AccountSignup }
 import from .components.SavedCards { SavedCards }
 
 
@@ -13,6 +14,7 @@ def:pub app() -> JsxElement {
     return <Router><Routes>
         <Route path="/" element={<SmartBasket />} />
         <Route path="/login" element={<AccountLogin />} />
+        <Route path="/signup" element={<AccountSignup />} />
         <Route path="/account/cards" element={<SavedCards />} />
     </Routes></Router>;
 }
