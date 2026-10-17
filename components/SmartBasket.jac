@@ -1,4 +1,4 @@
-sv import from ..services.basketService { BasketItem, OptimizationResult, initializeBasket, optimizeBasket }
+sv import from ..services.basketService { OptimizationResult, optimizeBasket }
 import from .ui.button { Button }
 import from .ui.card { Card, CardContent, CardDescription, CardHeader, CardTitle }
 import from .ui.input { Input }
@@ -9,7 +9,7 @@ import from "@hugeicons/core-free-icons" { ShoppingBag01Icon, SparklesIcon, Deli
 
 def:pub SmartBasket() -> JsxElement {
     has grocery_text: str = "2kg rice, 1L milk, eggs, tomatoes, bread";
-    has basket_items: list[str] = [];
+    has basket_items: list[str] = ["2kg rice", "1L milk", "eggs", "tomatoes", "bread"];
     has result: OptimizationResult | None = None;
     has loading: bool = False;
     has error_message: str = "";
@@ -18,11 +18,6 @@ def:pub SmartBasket() -> JsxElement {
     has stores: list[str] = ["Keells", "Cargills Food City", "Arpico Supercentre"];
     has selected_store: str = "All stores";
     has speed_priority: int = 45;
-
-    async can with entry {
-        _ = await initializeBasket();
-        basket_items = grocery_text.split(",");
-    }
 
     def handle_text(e: ChangeEvent) { grocery_text = e.target.value; }
     def handle_store(e: ChangeEvent) { selected_store = e.target.value; }
