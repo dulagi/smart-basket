@@ -3,6 +3,7 @@ node SavedPaymentCard {
     has brand: str;
     has bank: str;
     has last_four: str;
+    has mock_balance: float = 0.0;
 }
 
 def:protect listSavedCards() -> list[SavedPaymentCard] {
@@ -21,5 +22,5 @@ def:protect addSavedCard(nickname: str, brand: str, bank: str, last_four: str) -
     for digit in clean_last_four {
         if digit not in "0123456789" { return None; }
     }
-    return root ++> SavedPaymentCard(nickname=clean_nickname, brand=clean_brand, bank=clean_bank, last_four=clean_last_four);
+    return root ++> SavedPaymentCard(nickname=clean_nickname, brand=clean_brand, bank=clean_bank, last_four=clean_last_four, mock_balance=0.0);
 }

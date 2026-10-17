@@ -28,7 +28,7 @@ def:pub AccountSignup() -> JsxElement {
         if len(password) < 8 { message = "Use a password with at least 8 characters."; busy = False; return; }
         if len(email.strip()) == 0 or "@" not in email { message = "Enter a valid email address."; busy = False; return; }
         try {
-            signup_result = await jacSignup(email.strip(), password, {"firstname": username.strip()});
+            signup_result = await jacSignup(email.strip(), password, {"profile": {"firstname": username.strip()}});
             if not signup_result["success"] { message = str(signup_result["error"] or "Could not create account. Check your details."); }
             else {
                 login_ok = await jacLogin(email, password);

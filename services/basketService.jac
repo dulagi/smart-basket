@@ -6,6 +6,8 @@ node Grocery {
     has name: str = "";
     has base_price: float = 0.0;
     has category: str = "Pantry";
+    has pack_size: float = 1.0;
+    has pack_unit: str = "pack";
 }
 node Supermarket {
     has name: str = "";
@@ -42,6 +44,8 @@ obj BasketItem {
     has name: str;
     has quantity: float = 1.0;
     has unit: str = "";
+    has requested_quantity: float = 1.0;
+    has requested_unit: str = "pack";
     has category: str = "Pantry";
 }
 obj BillLine {
@@ -84,6 +88,8 @@ obj OptimizationResult {
     has unavailable_items: list[str] = [];
     has offer_rules: list[OfferRule] = [];
     has profile: UserProfileView | None = None;
+    has mock_balance_warning: str = "";
+    has location_summary: str = "";
     has lines: list[BillLine] = [];
     has deliveries: list[StoreDelivery] = [];
     has store: str = "";
@@ -143,6 +149,12 @@ def:pub initializeBasket() -> bool {
         Grocery(name="Soap (Pack of 4)", base_price=480.0, category="Household")
     ];
     for grocery in groceries {
+        lower_product_name = grocery.name.lower();
+        if "5kg" in lower_product_name { grocery.pack_size = 5.0; grocery.pack_unit = "kg"; }
+        elif "1kg" in lower_product_name { grocery.pack_size = 1.0; grocery.pack_unit = "kg"; }
+        elif "250g" in lower_product_name { grocery.pack_size = 250.0; grocery.pack_unit = "g"; }
+        elif "500g" in lower_product_name or "400g" in lower_product_name or "200g" in lower_product_name { grocery.pack_size = 500.0 if "500g" in lower_product_name else (400.0 if "400g" in lower_product_name else 200.0); grocery.pack_unit = "g"; }
+        elif "1l" in lower_product_name { grocery.pack_size = 1.0; grocery.pack_unit = "L"; }
         exists = False;
         for current in [root -->][?:Grocery] { if current.name == grocery.name { exists = True; } }
         if not exists { root ++> grocery; }
@@ -275,24 +287,35 @@ async def:pub optimizeBasket(grocery_text: str, selected_cards: list[str], prefe
     for entry in grocery_text.split(",") {
         needle = entry.lower().strip();
         quantity: float = 1.0;
-        if needle.startswith("2kg ") { quantity = 2.0; needle = needle[4:]; }
-        elif needle.startswith("1kg ") { needle = needle[4:]; }
-        elif needle.startswith("1l ") { needle = needle[3:]; }
-        elif needle.startswith("2l ") { quantity = 2.0; needle = needle[3:]; }
+        requested_unit = "pack";
+        for prefix in ["1kg ", "2kg ", "3kg ", "4kg ", "1l ", "2l "] {
+            if needle.startswith(prefix) {
+                quantity = float(prefix[:len(prefix) - 3].strip());
+                requested_unit = "kg" if "kg" in prefix else "L";
+                needle = needle[len(prefix):];
+            }
+        }
         needle = needle.strip();
         matched: Grocery | None = None;
         nearest: Grocery | None = None;
         nearest_distance: int = 999;
+        requested_base = needle.split(" (")[0];
         for item in [root -->][?:Grocery] {
             normalized_name = item.name.lower();
             short_name = normalized_name.split(" (")[0];
-            if normalized_name.startswith(needle + " (") or normalized_name == needle or short_name == needle { matched = item; }
-            distance = editDistance(needle, short_name);
+            if normalized_name.startswith(needle + " (") or normalized_name == needle or short_name == needle or requested_base in short_name or short_name in requested_base { matched = item; }
+            distance = editDistance(requested_base, short_name);
             if distance < nearest_distance { nearest_distance = distance; nearest = item; }
         }
         if matched is None and nearest is not None and nearest_distance <= 2 { matched = nearest as Grocery; }
-        if matched is not None { product = matched as Grocery; products = products + [BasketItem(name=product.name, quantity=quantity, category=product.category)]; }
-        else { unavailable = unavailable + [entry.strip()]; }
+        if matched is not None {
+            product = matched as Grocery;
+            requested_amount = quantity;
+            if requested_unit == "kg" and product.pack_unit == "kg" { quantity = requested_amount / product.pack_size; }
+            elif requested_unit == "L" and product.pack_unit == "L" { quantity = requested_amount / product.pack_size; }
+            else { quantity = requested_amount; }
+            products = products + [BasketItem(name=product.name, quantity=quantity, unit=product.pack_unit, requested_quantity=requested_amount, requested_unit=requested_unit, category=product.category)];
+        } else { unavailable = unavailable + [entry.strip()]; }
     }
     if len(products) == 0 { return OptimizationResult(error="None of these items exist in the mock catalog: " + ", ".join(unavailable)); }
     eligible_banks: list[str] = [];
@@ -307,6 +330,9 @@ async def:pub optimizeBasket(grocery_text: str, selected_cards: list[str], prefe
     subtotal: float = 0.0;
     item_savings: float = 0.0;
     for product in products {
+        has_availability = False;
+        for shop in candidates { for offer in [shop ->:HasOffer:->][?:InventoryOffer] { if offer.item_name == product.name and offer.price > 0.0 { has_availability = True; } } }
+        if not has_availability { unavailable = unavailable + [product.name]; }
         lowest_cost: float = 999999999.0;
         winning_line: BillLine | None = None;
         for shop in candidates {
@@ -375,11 +401,12 @@ async def:pub optimizeBasket(grocery_text: str, selected_cards: list[str], prefe
     location_total = sum([shop.trip_fee for shop in candidates if shop.name in store_names]);
     total = subtotal - item_savings - total_discount + delivery_total + location_total;
     user_profile: UserProfileView = getUserProfile();
-    remaining_balance = user_profile.mock_available_balance - total;
-    balance_warning = "";
-    if remaining_balance < 0.0 { balance_warning = "Estimated total exceeds the demo available balance. COD remains available; card authorization/balance is not connected."; }
-    eta = (datetime.now() + timedelta(days=delivery_days, hours=delivery_hours)).strftime("%A, %d %B at %H:%M");
+    remaining_balance: float = user_profile.mock_available_balance - total;
+    mock_balance_warning: str = "";
+    if len(eligible_banks) > 0 and remaining_balance < 0.0 { mock_balance_warning = "Estimated total exceeds the demo mock balance; COD is still available. No bank balance is accessed."; }
+    eta = (datetime.now() + timedelta(days=delivery_days) + timedelta(seconds=delivery_hours * 3600)).strftime("%A, %d %B at %H:%M");
     suggestions: list[str] = getMissingHabitSuggestions(grocery_text);
     applied_savings = item_savings + total_discount;
-    return OptimizationResult(items=products, ai_suggestions=suggestions, unavailable_items=unavailable, offer_rules=applied_rules, profile=user_profile, lines=lines, deliveries=deliveries, store=", ".join(store_names), courier=courier_label, card=", ".join(eligible_banks), subtotal=subtotal, item_discounts=item_savings, basket_discount=total_discount, delivery_charge=delivery_total, location_charge=location_total, total=total, savings=applied_savings, estimated_balance=remaining_balance, balance_warning=balance_warning, delivery_days=delivery_days, delivery_hours=delivery_hours, delivery_date=eta, promo_note="Store markdowns and eligible capped bank offers applied");
+    location_summary = "; ".join(location_names);
+    return OptimizationResult(items=products, ai_suggestions=suggestions, unavailable_items=unavailable, offer_rules=applied_rules, profile=user_profile, mock_balance_warning=mock_balance_warning, location_summary=location_summary, lines=lines, deliveries=deliveries, store=", ".join(store_names), courier=courier_label, card=", ".join(eligible_banks), subtotal=subtotal, item_discounts=item_savings, basket_discount=total_discount, delivery_charge=delivery_total, location_charge=location_total, total=total, savings=applied_savings, estimated_balance=remaining_balance, delivery_days=delivery_days, delivery_hours=delivery_hours, delivery_date=eta, promo_note="Store markdowns and eligible capped bank offers applied");
 }
