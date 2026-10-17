@@ -71,7 +71,7 @@ sem classify_groceries = "Categorize every grocery list entry for delivery plann
 sem classify_groceries.grocery_text = "User's comma-separated grocery list, including quantities.";
 
 
-def initializeBasket() -> bool {
+def:pub initializeBasket() -> bool {
     if len([root -->][?:Supermarket]) > 0 { return True; }
     rice = root ++> Grocery(name="rice", base_price=420.0, category="Pantry");
     milk = root ++> Grocery(name="milk", base_price=520.0, category="Perishable");
@@ -172,10 +172,7 @@ walker:pub optimizeBasket {
                 for product in [root -->][?:Grocery] {
                     if product.name in typed_name or typed_name in product.name { matched = product; }
                 }
-                if matched is None {
-                    report OptimizationResult(error="We could not match '" + classification.name + "' to our mocked inventory. Try rice, milk, eggs, bread, dhal, tomatoes, bananas, tea, sugar, or chicken.");
-                    disengage;
-                } else {
+                if matched is not None {
                 found = matched as Grocery;
                 item_price: float = found.base_price;
                 for inventory in [edge shop ->:HasOffer:->][?:InventoryOffer] {

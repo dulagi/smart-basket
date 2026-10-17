@@ -39,10 +39,11 @@ def:pub SmartBasket() -> JsxElement {
         store_choices: list[str] = [];
         if selected_store != "All stores" { store_choices = [selected_store]; }
         try {
-            response = await optimizeBasket(grocery_text, selected_cards, store_choices, speed_priority);
+            response = root spawn optimizeBasket(grocery_text=grocery_text, selected_cards=selected_cards, preferred_stores=store_choices, speed_priority=speed_priority);
             if len(response.reports) > 0 {
-                result = response.reports[0] as OptimizationResult;
-                if result.error != "" { error_message = result.error; result = None; }
+                candidate = response.reports[0] as OptimizationResult;
+                if candidate.error != "" { error_message = candidate.error; result = None; }
+                else { result = candidate; }
             } else { error_message = "The basket planner returned no itinerary. Please try again."; }
         } except Exception {
             error_message = "We could not optimize this basket. Please try again.";
