@@ -38,7 +38,7 @@ def:pub AccountSignup() -> JsxElement {
                     else { message = profile_message; }
                 } else { success_message = "Account created. Please sign in to continue."; }
             }
-        } except Exception { message = "Could not create the account. Use a valid email and a stronger password."; }
+        } except Exception as err { message = "Could not create the account: " + str(err); }
         busy = False;
     }
     return <div className="sb-app grid min-h-screen lg:grid-cols-2">

@@ -1,6 +1,6 @@
-import from services.basketService { BasketItem, BillLine, StoreDelivery, InventoryRow, OptimizationResult, ItemClassification, initializeBasket, classify_groceries, optimizeBasket, listStoreInventory }
+import from services.basketService { BasketItem, BillLine, StoreDelivery, OfferRule, InventoryRow, OptimizationResult, ItemClassification, initializeBasket, classify_groceries, optimizeBasket, listStoreInventory }
 import from services.paymentCards { SavedPaymentCard, listSavedCards, addSavedCard }
-import from services.userProfile { BasketProfile, saveDisplayName, getDisplayName }
+import from services.userProfile { UserProfileNode, UserProfileView, saveDisplayName, getDisplayName, getUserProfile, getMissingHabitSuggestions, recordShopping }
 import ".styles.global.css";
 import from "react" { useEffect }
 import from "@jac/runtime" { Router, Routes, Route }
